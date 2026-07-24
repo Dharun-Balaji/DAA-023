@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mst.py — visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Newsreader:ital,opsz,wght@1,6..72,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --base:    #24273a;
+    --mantle:  #1e2030;
+    --crust:   #181926;
+    --surface0:#363a4f;
+    --surface1:#494d64;
+    --surface2:#5b6078;
+    --overlay0:#6e738d;
+    --overlay1:#8087a2;
+    --text:    #cad3f5;
+    --subtext1:#b8c0e0;
+    --subtext0:#a5adcb;
+    --red:     #ed8796;
+    --maroon:  #ee99a0;
+    --peach:   #f5a97f;
+    --yellow:  #eed49f;
+    --green:   #a6da95;
+    --teal:    #8bd5ca;
+    --sky:     #91d7e3;
+    --sapphire:#7dc4e4;
+    --blue:    #8aadf4;
+    --lavender:#b7bdf8;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --serif: 'Newsreader', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--crust);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+  }
+  body {
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(138,173,244,0.08), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(166,218,149,0.06), transparent 45%);
+    display: flex; justify-content: center; padding: 48px 20px 80px;
+  }
+  .shell { width: 100%; max-width: 860px; }
+  .titlebar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--mantle); border: 1px solid var(--surface0);
+    border-bottom: none; border-radius: 10px 10px 0 0; padding: 10px 16px;
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot.r { background: var(--red); }
+  .dot.y { background: var(--yellow); }
+  .dot.g { background: var(--green); }
+  .titlebar span { margin-left: 10px; font-size: 12.5px; color: var(--overlay1); letter-spacing: 0.02em; }
+  .frame {
+    background: var(--base); border: 1px solid var(--surface0);
+    border-radius: 0 0 10px 10px; padding: 40px 44px 36px;
+    box-shadow: 0 30px 60px -25px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.2);
+  }
+  header.head { margin-bottom: 34px; }
+  .kicker {
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.22em;
+    color: var(--lavender); opacity: 0.8; margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--serif); font-style: italic; font-weight: 500;
+    font-size: 32px; color: var(--text); margin: 0 0 10px; letter-spacing: -0.01em;
+  }
+  h1 .accent { color: var(--green); font-style: normal; font-family: var(--mono); font-weight: 700; }
+  .sub {
+    font-size: 13.5px; color: var(--overlay1); line-height: 1.6; max-width: 60ch; margin: 0;
+  }
+  .sub code { background: var(--surface0); color: var(--sky); padding: 1px 6px; border-radius: 4px; font-size: 12.5px; }
+
+  .controls {
+    display: grid; grid-template-columns: 3fr auto; gap: 12px; margin-bottom: 8px; align-items: end;
+  }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--overlay0); font-weight: 600;
+  }
+  input {
+    font-family: var(--mono); background: var(--mantle); border: 1px solid var(--surface1);
+    color: var(--text); padding: 12px 14px; border-radius: 7px; font-size: 14.5px; width: 100%;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  input::placeholder { color: var(--overlay0); }
+  input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(138,173,244,0.15); }
+  button#runBtn {
+    font-family: var(--mono); background: var(--green); color: var(--crust); border: none;
+    padding: 12px 22px; border-radius: 7px; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+    white-space: nowrap; box-shadow: 0 4px 14px -6px rgba(166,218,149,0.5);
+  }
+  button#runBtn:hover:not(:disabled) { background: #b3e4a1; transform: translateY(-1px); }
+  button#runBtn:active:not(:disabled) { transform: translateY(0); }
+  button#runBtn:disabled { background: var(--surface1); color: var(--overlay0); cursor: not-allowed; box-shadow: none; }
+  .error-msg { font-size: 12px; color: var(--red); min-height: 16px; margin: 6px 2px 18px; }
+
+  .algo-tabs {
+    display: flex; gap: 8px; margin-bottom: 16px;
+  }
+  .algo-tab {
+    padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    background: var(--mantle); border: 1px solid var(--surface1); color: var(--overlay1);
+    cursor: pointer; transition: all 0.15s ease;
+  }
+  .algo-tab.active { background: var(--surface0); border-color: var(--blue); color: var(--blue); }
+
+  .graph-container {
+    display: flex; justify-content: center; margin: 16px 0;
+    background: var(--mantle); border: 1px solid var(--surface0);
+    border-radius: 8px; padding: 20px; min-height: 380px;
+  }
+  .graph-container svg { width: 100%; max-width: 600px; height: auto; }
+
+  .edge-list {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0;
+  }
+  .edge-panel {
+    background: var(--mantle); border: 1px solid var(--surface0);
+    border-radius: 8px; padding: 16px;
+  }
+  .edge-panel h3 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--overlay0); margin: 0 0 12px;
+  }
+  .edge-panel .cost-row {
+    font-size: 14px; color: var(--subtext1); margin: 6px 0;
+    display: flex; justify-content: space-between;
+  }
+  .edge-panel .cost-row .total { color: var(--green); font-weight: 700; font-size: 16px; }
+  .edge-item {
+    font-size: 12.5px; color: var(--subtext0); padding: 4px 8px;
+    border-left: 3px solid transparent; margin: 3px 0;
+  }
+  .edge-item.in-mst { color: var(--green); border-left-color: var(--green); font-weight: 600; }
+
+  .result-box {
+    display: flex; align-items: center; gap: 12px; margin-top: 18px;
+    padding: 16px 18px; background: var(--mantle); border: 1px solid var(--surface0);
+    border-left: 3px solid var(--green); border-radius: 0 8px 8px 0;
+    font-size: 13.5px; color: var(--subtext1);
+  }
+  .result-prompt { color: var(--green); font-weight: 700; flex-shrink: 0; }
+
+  .footnote {
+    margin-top: 28px; font-size: 11px; color: var(--overlay0);
+    display: flex; justify-content: space-between;
+    border-top: 1px solid var(--surface0); padding-top: 16px;
+  }
+  .footnote code { color: var(--overlay1); }
+
+  @media (max-width: 640px) {
+    .frame { padding: 28px 22px 26px; }
+    .edge-list { grid-template-columns: 1fr; }
+    h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="titlebar">
+    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+    <span>~/algorithms/mst.py</span>
+  </div>
+  <div class="frame">
+    <header class="head">
+      <p class="kicker">Minimum spanning tree &middot; O(E log E) / O(E log V)</p>
+      <h1>MST <span class="accent">kruskal() &amp; prim()</span></h1>
+      <p class="sub">Finding the minimum spanning tree using <code>Kruskal's</code> (Union-Find) and <code>Prim's</code> (Priority Queue) algorithms. Edit the edges below — format <code>u-v:weight</code>, comma separated, undirected.</p>
+    </header>
+
+    <div class="controls">
+      <div class="field">
+        <label for="edgesInput">edges (u-v:weight)</label>
+        <input type="text" id="edgesInput" value="0-1:7, 0-3:5, 1-2:8, 1-3:9, 1-4:7, 2-4:5, 3-4:15, 3-5:6, 4-5:8, 4-6:9, 5-6:11" placeholder="e.g. 0-1:7, 1-2:8">
+      </div>
+      <button id="runBtn" onclick="runFromInput()">run →</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="algo-tabs">
+      <div class="algo-tab active" data-algo="kruskal" onclick="switchMST('kruskal')">Kruskal's</div>
+      <div class="algo-tab" data-algo="prim" onclick="switchMST('prim')">Prim's</div>
+    </div>
+
+    <div class="graph-container" id="graphContainer"></div>
+
+    <div class="edge-list">
+      <div class="edge-panel">
+        <h3>Kruskal's MST</h3>
+        <div id="kruskalEdges">
+          <div class="cost-row"><span>Total:</span><span class="total" id="kruskalCost">—</span></div>
+        </div>
+      </div>
+      <div class="edge-panel">
+        <h3>Prim's MST</h3>
+        <div id="primEdges">
+          <div class="cost-row"><span>Total:</span><span class="total" id="primCost">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-box" id="resultBox">
+      <span class="result-prompt">&gt;</span>
+      <span id="resultText">Both algorithms produce the same MST total cost for verification.</span>
+    </div>
+
+    <div class="footnote">
+      <span>Kruskal: sort edges + Union-Find &middot; Prim: binary heap + adjacency list</span>
+      <span><code>ms.15</code></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  let graph = { vertices: 0, edges: [] };
+  let pos = [];
+  let selectedAlgo = 'kruskal';
+
+  function computePositions(count) {
+    const cx = 300, cy = 200, r = count <= 1 ? 0 : Math.min(160, 70 + count * 12);
+    const p = [];
+    for (let i = 0; i < count; i++) {
+      const angle = -Math.PI / 2 + (2 * Math.PI * i) / count;
+      p.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
+    }
+    return p;
+  }
+
+  function parseEdges(str) {
+    const tokens = str.split(',').map(t => t.trim()).filter(Boolean);
+    if (tokens.length === 0) throw new Error('no edges given.');
+    const re = /^(\d+)\s*-\s*(\d+)\s*:\s*(-?\d+(\.\d+)?)$/;
+    const edges = [];
+    let maxV = 0;
+    for (const t of tokens) {
+      const m = t.match(re);
+      if (!m) throw new Error(`invalid edge "${t}" — expected format u-v:weight`);
+      const u = parseInt(m[1], 10), v = parseInt(m[2], 10), w = parseFloat(m[3]);
+      if (u === v) throw new Error(`edge "${t}" is a self-loop, which MST doesn't use.`);
+      edges.push([u, v, w]);
+      maxV = Math.max(maxV, u, v);
+    }
+    return { vertices: maxV + 1, edges };
+  }
+
+  function kruskalMST(n, edges) {
+    const sorted = [...edges].sort((a, b) => a[2] - b[2]);
+    const parent = Array.from({ length: n }, (_, i) => i);
+    const rank = new Array(n).fill(0);
+    function find(x) { if (parent[x] !== x) parent[x] = find(parent[x]); return parent[x]; }
+    function union(x, y) {
+      let rx = find(x), ry = find(y);
+      if (rx === ry) return false;
+      if (rank[rx] < rank[ry]) [rx, ry] = [ry, rx];
+      parent[ry] = rx;
+      if (rank[rx] === rank[ry]) rank[rx]++;
+      return true;
+    }
+    const mst = [];
+    let cost = 0;
+    for (const [u, v, w] of sorted) {
+      if (union(u, v)) { mst.push([u, v, w]); cost += w; }
+    }
+    return { mst, cost };
+  }
+
+  function primMST(n, edges, start = 0) {
+    const adj = Array.from({ length: n }, () => []);
+    for (const [u, v, w] of edges) { adj[u].push([v, w]); adj[v].push([u, w]); }
+    const INF = Infinity;
+    const key = new Array(n).fill(INF);
+    const parent = new Array(n).fill(-1);
+    const inMST = new Array(n).fill(false);
+    key[start] = 0;
+    const pq = [[0, start]];
+    const mst = [];
+    let cost = 0;
+    while (pq.length) {
+      pq.sort((a, b) => a[0] - b[0]);
+      const [w, u] = pq.shift();
+      if (inMST[u]) continue;
+      inMST[u] = true;
+      if (parent[u] !== -1) { mst.push([parent[u], u, w]); cost += w; }
+      for (const [v, wt] of adj[u]) {
+        if (!inMST[v] && wt < key[v]) {
+          key[v] = wt;
+          parent[v] = u;
+          pq.push([wt, v]);
+        }
+      }
+    }
+    return { mst, cost };
+  }
+
+  function drawGraph(highlight) {
+    const container = document.getElementById('graphContainer');
+    const mstSet = new Set(highlight ? highlight.map(e => `${Math.min(e[0], e[1])}-${Math.max(e[0], e[1])}`) : []);
+
+    let svg = `<svg viewBox="0 0 600 420" xmlns="http://www.w3.org/2000/svg">`;
+
+    // Edges
+    for (const [u, v, w] of graph.edges) {
+      const key = `${Math.min(u, v)}-${Math.max(u, v)}`;
+      const inMst = mstSet.has(key);
+      const x1 = pos[u][0], y1 = pos[u][1];
+      const x2 = pos[v][0], y2 = pos[v][1];
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
+        stroke="${inMst ? 'var(--green, #a6da95)' : 'var(--surface2, #5b6078)'}"
+        stroke-width="${inMst ? 4 : 1.5}"
+        stroke-opacity="${inMst ? 1 : 0.3}"
+        style="transition: all 0.3s ease;"/>`;
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const offX = 12 * Math.sin(angle), offY = -12 * Math.cos(angle);
+      svg += `<text x="${mx + offX}" y="${my + offY}"
+        fill="${inMst ? 'var(--green, #a6da95)' : 'var(--overlay0, #6e738d)'}"
+        font-size="11" font-weight="${inMst ? 700 : 400}"
+        text-anchor="middle" dominant-baseline="middle">${w}</text>`;
+    }
+
+    // Vertices
+    for (let i = 0; i < graph.vertices; i++) {
+      svg += `<circle cx="${pos[i][0]}" cy="${pos[i][1]}" r="18"
+        fill="var(--surface0, #363a4f)" stroke="var(--blue, #8aadf4)" stroke-width="2"/>`;
+      svg += `<text x="${pos[i][0]}" y="${pos[i][1]}"
+        fill="var(--text, #cad3f5)" font-size="13" font-weight="700"
+        text-anchor="middle" dominant-baseline="central">${i}</text>`;
+    }
+
+    svg += `</svg>`;
+    container.innerHTML = svg;
+  }
+
+  function renderEdgeList(algo) {
+    const kResult = kruskalMST(graph.vertices, graph.edges);
+    const pResult = primMST(graph.vertices, graph.edges);
+
+    document.getElementById('kruskalCost').innerText = kResult.cost;
+    document.getElementById('primCost').innerText = pResult.cost;
+
+    const kContainer = document.getElementById('kruskalEdges');
+    const pContainer = document.getElementById('primEdges');
+
+    kContainer.querySelectorAll('.edge-item').forEach(e => e.remove());
+    pContainer.querySelectorAll('.edge-item').forEach(e => e.remove());
+
+    for (const [u, v, w] of kResult.mst) {
+      const div = document.createElement('div');
+      div.className = 'edge-item in-mst';
+      div.textContent = `Edge (${u} - ${v})  Weight: ${w}`;
+      kContainer.appendChild(div);
+    }
+    for (const [u, v, w] of pResult.mst) {
+      const div = document.createElement('div');
+      div.className = 'edge-item in-mst';
+      div.textContent = `Edge (${u} - ${v})  Weight: ${w}`;
+      pContainer.appendChild(div);
+    }
+
+    const current = algo === 'kruskal' ? kResult : pResult;
+    drawGraph(current.mst);
+
+    const connected = kResult.mst.length === graph.vertices - 1;
+    document.getElementById('resultText').innerText = connected
+      ? `Showing ${algo === 'kruskal' ? "Kruskal's" : "Prim's"} MST. Both produce total cost ${kResult.cost} for verification.`
+      : `Graph is disconnected — MST only covers ${kResult.mst.length + 1} of ${graph.vertices} vertices.`;
+  }
+
+  function switchMST(algo) {
+    selectedAlgo = algo;
+    document.querySelectorAll('.algo-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`[data-algo="${algo}"]`).classList.add('active');
+    renderEdgeList(algo);
+  }
+
+  function runFromInput() {
+    const edgesStr = document.getElementById('edgesInput').value;
+    const errorMsg = document.getElementById('errorMsg');
+    const runBtn = document.getElementById('runBtn');
+    errorMsg.innerText = '';
+
+    let parsed;
+    try {
+      parsed = parseEdges(edgesStr);
+    } catch (err) {
+      errorMsg.innerText = `error: ${err.message}`;
+      return;
+    }
+
+    runBtn.disabled = true;
+    graph = parsed;
+    pos = computePositions(graph.vertices);
+    renderEdgeList(selectedAlgo);
+    runBtn.disabled = false;
+  }
+
+  runFromInput();
+</script>
+</body>
+</html>

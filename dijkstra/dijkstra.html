@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dijkstra.py — visualizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Newsreader:ital,opsz,wght@1,6..72,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --base:    #24273a;
+    --mantle:  #1e2030;
+    --crust:   #181926;
+    --surface0:#363a4f;
+    --surface1:#494d64;
+    --surface2:#5b6078;
+    --overlay0:#6e738d;
+    --overlay1:#8087a2;
+    --text:    #cad3f5;
+    --subtext1:#b8c0e0;
+    --subtext0:#a5adcb;
+    --red:     #ed8796;
+    --maroon:  #ee99a0;
+    --peach:   #f5a97f;
+    --yellow:  #eed49f;
+    --green:   #a6da95;
+    --teal:    #8bd5ca;
+    --sky:     #91d7e3;
+    --sapphire:#7dc4e4;
+    --blue:    #8aadf4;
+    --lavender:#b7bdf8;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --serif: 'Newsreader', Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--crust);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+  }
+  body {
+    background-image:
+      radial-gradient(circle at 15% 10%, rgba(138,173,244,0.08), transparent 40%),
+      radial-gradient(circle at 85% 90%, rgba(166,218,149,0.06), transparent 45%);
+    display: flex; justify-content: center; padding: 48px 20px 80px;
+  }
+  .shell { width: 100%; max-width: 860px; }
+  .titlebar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--mantle); border: 1px solid var(--surface0);
+    border-bottom: none; border-radius: 10px 10px 0 0; padding: 10px 16px;
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot.r { background: var(--red); }
+  .dot.y { background: var(--yellow); }
+  .dot.g { background: var(--green); }
+  .titlebar span { margin-left: 10px; font-size: 12.5px; color: var(--overlay1); letter-spacing: 0.02em; }
+  .frame {
+    background: var(--base); border: 1px solid var(--surface0);
+    border-radius: 0 0 10px 10px; padding: 40px 44px 36px;
+    box-shadow: 0 30px 60px -25px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.2);
+  }
+  header.head { margin-bottom: 34px; }
+  .kicker {
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.22em;
+    color: var(--lavender); opacity: 0.8; margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--serif); font-style: italic; font-weight: 500;
+    font-size: 32px; color: var(--text); margin: 0 0 10px; letter-spacing: -0.01em;
+  }
+  h1 .accent { color: var(--green); font-style: normal; font-family: var(--mono); font-weight: 700; }
+  .sub {
+    font-size: 13.5px; color: var(--overlay1); line-height: 1.6; max-width: 60ch; margin: 0;
+  }
+  .sub code { background: var(--surface0); color: var(--sky); padding: 1px 6px; border-radius: 4px; font-size: 12.5px; }
+
+  .graph-container {
+    display: flex; justify-content: center; margin: 16px 0;
+    background: var(--mantle); border: 1px solid var(--surface0);
+    border-radius: 8px; padding: 20px; min-height: 340px;
+  }
+  .graph-container svg { width: 100%; max-width: 600px; height: auto; }
+
+  .path-table {
+    margin: 16px 0; overflow-x: auto;
+  }
+  .path-table table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+  }
+  .path-table th {
+    text-align: left; padding: 10px 14px;
+    background: var(--mantle); color: var(--overlay1);
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em;
+    border-bottom: 2px solid var(--surface0);
+  }
+  .path-table td {
+    padding: 10px 14px; border-bottom: 1px solid var(--surface0);
+    color: var(--subtext1);
+  }
+  .path-table tr:hover td { background: var(--mantle); }
+  .path-table .highlight { color: var(--green); font-weight: 700; }
+  .path-table .path-str { color: var(--blue); font-family: var(--mono); font-size: 12.5px; }
+
+  .result-box {
+    display: flex; align-items: center; gap: 12px; margin-top: 18px;
+    padding: 16px 18px; background: var(--mantle); border: 1px solid var(--surface0);
+    border-left: 3px solid var(--green); border-radius: 0 8px 8px 0;
+    font-size: 13.5px; color: var(--subtext1);
+  }
+  .result-prompt { color: var(--green); font-weight: 700; flex-shrink: 0; }
+
+  .controls {
+    display: grid; grid-template-columns: 2fr 1fr auto; gap: 12px; margin-bottom: 8px; align-items: end;
+  }
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--overlay0); font-weight: 600;
+  }
+  input {
+    font-family: var(--mono); background: var(--mantle); border: 1px solid var(--surface1);
+    color: var(--text); padding: 12px 14px; border-radius: 7px; font-size: 14.5px; width: 100%;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  input::placeholder { color: var(--overlay0); }
+  input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(138,173,244,0.15); }
+  button#runBtn {
+    font-family: var(--mono); background: var(--green); color: var(--crust); border: none;
+    padding: 12px 22px; border-radius: 7px; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.15s ease;
+    white-space: nowrap; box-shadow: 0 4px 14px -6px rgba(166,218,149,0.5);
+  }
+  button#runBtn:hover:not(:disabled) { background: #b3e4a1; transform: translateY(-1px); }
+  button#runBtn:active:not(:disabled) { transform: translateY(0); }
+  button#runBtn:disabled { background: var(--surface1); color: var(--overlay0); cursor: not-allowed; box-shadow: none; }
+  .error-msg { font-size: 12px; color: var(--red); min-height: 16px; margin: 6px 2px 18px; }
+
+  .footnote {
+    margin-top: 28px; font-size: 11px; color: var(--overlay0);
+    display: flex; justify-content: space-between;
+    border-top: 1px solid var(--surface0); padding-top: 16px;
+  }
+  .footnote code { color: var(--overlay1); }
+
+  @media (max-width: 640px) {
+    .frame { padding: 28px 22px 26px; }
+    h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="titlebar">
+    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+    <span>~/algorithms/dijkstra.py</span>
+  </div>
+  <div class="frame">
+    <header class="head">
+      <p class="kicker">Single source shortest path &middot; O((V+E) log V)</p>
+      <h1>Dijkstra <span class="accent">shortest_path()</span></h1>
+      <p class="sub">Finding shortest paths from a source vertex to all other vertices using a min-heap priority queue. Edit the edges below — format <code>u-v:weight</code>, comma separated, directed from u to v.</p>
+    </header>
+
+    <div class="controls">
+      <div class="field">
+        <label for="edgesInput">edges (u-v:weight)</label>
+        <input type="text" id="edgesInput" value="0-1:4, 0-2:1, 1-3:1, 2-1:2, 2-3:5, 3-4:3, 4-5:2" placeholder="e.g. 0-1:4, 1-2:2">
+      </div>
+      <div class="field">
+        <label for="sourceInput">source vertex</label>
+        <input type="number" id="sourceInput" value="0" min="0" placeholder="0">
+      </div>
+      <button id="runBtn" onclick="runFromInput()">run →</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="graph-container" id="graphContainer"></div>
+
+    <div class="path-table">
+      <table>
+        <thead>
+          <tr><th>Vertex</th><th>Distance</th><th>Path</th></tr>
+        </thead>
+        <tbody id="pathTableBody"></tbody>
+      </table>
+    </div>
+
+    <div class="result-box" id="resultBox">
+      <span class="result-prompt">&gt;</span>
+      <span id="resultText">Dijkstra's algorithm computed shortest paths from vertex 0 to all destinations.</span>
+    </div>
+
+    <div class="footnote">
+      <span>Greedy &middot; relaxation &middot; non-negative weights only</span>
+      <span><code>ms.15</code></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  let graph = {};
+  let n = 0;
+  let pos = [];
+
+  function computePositions(count) {
+    const cx = 300, cy = 190, r = count <= 1 ? 0 : Math.min(150, 60 + count * 12);
+    const p = [];
+    for (let i = 0; i < count; i++) {
+      const angle = -Math.PI / 2 + (2 * Math.PI * i) / count;
+      p.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
+    }
+    return p;
+  }
+
+  function parseEdges(str) {
+    const tokens = str.split(',').map(t => t.trim()).filter(Boolean);
+    if (tokens.length === 0) throw new Error('no edges given.');
+    const re = /^(\d+)\s*-\s*(\d+)\s*:\s*(-?\d+(\.\d+)?)$/;
+    const parsed = [];
+    let maxV = 0;
+    for (const t of tokens) {
+      const m = t.match(re);
+      if (!m) throw new Error(`invalid edge "${t}" — expected format u-v:weight`);
+      const u = parseInt(m[1], 10), v = parseInt(m[2], 10), w = parseFloat(m[3]);
+      if (w < 0) throw new Error(`edge "${t}" has a negative weight — Dijkstra requires non-negative weights.`);
+      parsed.push([u, v, w]);
+      maxV = Math.max(maxV, u, v);
+    }
+    const g = {};
+    for (let i = 0; i <= maxV; i++) g[i] = [];
+    for (const [u, v, w] of parsed) g[u].push([v, w]);
+    return { graph: g, n: maxV + 1 };
+  }
+
+  function runDijkstra(graph, source) {
+    const dist = new Array(n).fill(Infinity);
+    const prev = new Array(n).fill(null);
+    dist[source] = 0;
+    const pq = [[0, source]];
+    const visited = new Set();
+
+    while (pq.length) {
+      pq.sort((a, b) => a[0] - b[0]);
+      const [d, u] = pq.shift();
+      if (visited.has(u)) continue;
+      visited.add(u);
+      for (const [v, w] of graph[u]) {
+        if (dist[u] + w < dist[v]) {
+          dist[v] = dist[u] + w;
+          prev[v] = u;
+          pq.push([dist[v], v]);
+        }
+      }
+    }
+    return { dist, prev };
+  }
+
+  function reconstructPath(prev, source, target) {
+    const path = [];
+    let node = target;
+    while (node !== null) {
+      path.push(node);
+      node = prev[node];
+    }
+    path.reverse();
+    if (path[0] === source) return path;
+    return [];
+  }
+
+  function drawGraph(shortestPathEdges) {
+    const container = document.getElementById('graphContainer');
+    const speSet = new Set(shortestPathEdges.map(e => `${e[0]}-${e[1]}`));
+
+    let svg = `<svg viewBox="0 0 600 380" xmlns="http://www.w3.org/2000/svg">`;
+    svg += `<defs>
+      <marker id="arrowDim" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--surface2, #5b6078)"/>
+      </marker>
+      <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--green, #a6da95)"/>
+      </marker>
+    </defs>`;
+
+    // Directed edges
+    for (const [u, neighbors] of Object.entries(graph)) {
+      for (const [v, w] of neighbors) {
+        if (+u === +v) continue; // skip self-loops visually
+        const key = `${u}-${v}`;
+        const inPath = speSet.has(key);
+        const x1 = pos[u][0], y1 = pos[u][1];
+        const x2 = pos[v][0], y2 = pos[v][1];
+
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        const ux = dx / len, uy = dy / len;
+        const sx = x1 + ux * 20, sy = y1 + uy * 20;
+        const ex = x2 - ux * 20, ey = y2 - uy * 20;
+
+        svg += `<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}"
+          stroke="${inPath ? 'var(--green, #a6da95)' : 'var(--surface2, #5b6078)'}"
+          stroke-width="${inPath ? 4 : 1.5}"
+          stroke-opacity="${inPath ? 1 : 0.3}"
+          marker-end="url(#arrow${inPath ? 'Green' : 'Dim'})"
+          style="transition: all 0.3s ease;"/>`;
+
+        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const offX = 14 * Math.sin(angle), offY = -14 * Math.cos(angle);
+        svg += `<text x="${mx + offX}" y="${my + offY}"
+          fill="${inPath ? 'var(--green, #a6da95)' : 'var(--overlay0, #6e738d)'}"
+          font-size="11" font-weight="${inPath ? 700 : 400}"
+          text-anchor="middle" dominant-baseline="middle">${w}</text>`;
+      }
+    }
+
+    // Vertices
+    for (let i = 0; i < n; i++) {
+      svg += `<circle cx="${pos[i][0]}" cy="${pos[i][1]}" r="18"
+        fill="var(--surface0, #363a4f)" stroke="var(--blue, #8aadf4)" stroke-width="2"/>`;
+      svg += `<text x="${pos[i][0]}" y="${pos[i][1]}"
+        fill="var(--text, #cad3f5)" font-size="13" font-weight="700"
+        text-anchor="middle" dominant-baseline="central">${i}</text>`;
+    }
+
+    svg += `</svg>`;
+    container.innerHTML = svg;
+  }
+
+  function renderPaths(source) {
+    const { dist, prev } = runDijkstra(graph, source);
+    const tbody = document.getElementById('pathTableBody');
+    tbody.innerHTML = '';
+
+    const spe = [];
+    for (let v = 0; v < n; v++) {
+      if (prev[v] !== null) spe.push([prev[v], v]);
+    }
+
+    let farthest = source, farthestDist = 0;
+    for (let v = 0; v < n; v++) {
+      const tr = document.createElement('tr');
+      const path = reconstructPath(prev, source, v);
+      const pathStr = path.length ? path.join(' → ') : (v === source ? String(source) : 'No path');
+      const d = dist[v] === Infinity ? 'INF' : dist[v];
+      if (dist[v] !== Infinity && dist[v] > farthestDist) { farthestDist = dist[v]; farthest = v; }
+
+      tr.innerHTML = `
+        <td class="highlight">${v}</td>
+        <td class="highlight">${d}</td>
+        <td class="path-str">${pathStr}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    drawGraph(spe);
+    const farthestPath = reconstructPath(prev, source, farthest);
+    document.getElementById('resultText').innerText = farthestPath.length > 1
+      ? `Shortest distances from vertex ${source} computed. Path ${farthestPath.join(' → ')} has total distance ${farthestDist}.`
+      : `Shortest distances from vertex ${source} computed.`;
+  }
+
+  function runFromInput() {
+    const edgesStr = document.getElementById('edgesInput').value;
+    const sourceVal = parseInt(document.getElementById('sourceInput').value, 10);
+    const errorMsg = document.getElementById('errorMsg');
+    const runBtn = document.getElementById('runBtn');
+    errorMsg.innerText = '';
+
+    let parsedResult;
+    try {
+      parsedResult = parseEdges(edgesStr);
+    } catch (err) {
+      errorMsg.innerText = `error: ${err.message}`;
+      return;
+    }
+    if (isNaN(sourceVal) || sourceVal < 0 || sourceVal >= parsedResult.n) {
+      errorMsg.innerText = `error: source vertex must be between 0 and ${parsedResult.n - 1}.`;
+      return;
+    }
+
+    runBtn.disabled = true;
+    graph = parsedResult.graph;
+    n = parsedResult.n;
+    pos = computePositions(n);
+    renderPaths(sourceVal);
+    runBtn.disabled = false;
+  }
+
+  runFromInput();
+</script>
+</body>
+</html>
